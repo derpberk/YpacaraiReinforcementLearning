@@ -71,7 +71,7 @@ try:
             break
         elif char == ord('r'):
             print("Reseteando")
-            env.reset()
+            obs = env.reset()
             VM = obs['visited_map']
             IM = obs['importance_map']
             
@@ -111,14 +111,14 @@ try:
         
         obs,rew,done,info = env.step(accion)
         print("\rLa recompensa de esta acción ha sido: {0:.3f}".format(rew))
-        print("\rLa posicion toma el valor de [X,Y] = [{},{}]".format(obs['position'][0],obs['position'][1]))
+        print("\rOBS toma el valor de [X,Y] = [{},{}]".format(obs['position'][0],obs['position'][1]))
         
         VM = obs['visited_map']
         IM = obs['importance_map']
     
         ax1.imshow(env.render())
         ax2.imshow(VM, cmap = 'gray')
-        ax3.imshow(IM,interpolation='bicubic', cmap = 'jet')
+        ax3.imshow(IM,interpolation='nearest', cmap = 'jet_r')
         plt.pause(0.002)
         fig.show()
 

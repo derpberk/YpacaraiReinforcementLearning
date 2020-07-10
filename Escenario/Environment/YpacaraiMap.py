@@ -19,7 +19,7 @@ class Environment:
         # Cargamos el mapa #
         self.map = genfromtxt('./YpacaraiMap.csv', delimiter=',',dtype = int)
         self.S = np.ones(self.map.shape)
-        self.R_abs = np.copy(self.map)*255
+        self.R_abs = np.ones(self.map.shape)*255
         self.visited = np.zeros(self.map.shape)
         
         posible_x, posible_y = np.nonzero(self.map)
@@ -40,7 +40,7 @@ class Environment:
         # Reseteamos todo
         
         self.S = np.ones(self.map.shape)
-        self.R_abs = np.copy(self.map)*255
+        self.R_abs = np.ones(self.map.shape)*255
         self.visited = np.zeros(self.map.shape)
         
         posible_x, posible_y = np.nonzero(self.map)
