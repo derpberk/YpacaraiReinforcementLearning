@@ -307,11 +307,16 @@ print("\n Terminado! \n")
 np.savetxt("reward_DQN_2D.csv", r_buffer, delimiter=",")
 plt.figure(figsize=(16, 8))
 
-plt.plot(epi_buffer,fr_buffer,'r')
-error = np.abs(np.asarray(fr_buffer) - np.asarray(r_buffer))
-plt.fill_between(epi_buffer,fr_buffer+error,fr_buffer-error,color = 'blue', alpha=0.3)
+# Dibuja la recompensa filtrada #
+plt.plot(epi_buffer,fr_buffer,'b')
+
+# Desviacion tipica #
+std = np.sqrt(np.power(np.asarray(fr_buffer) - np.asarray(r_buffer),2))
+std = lfilter(np.asarray([0.05]), np.asarray([1,-0.95]), std)
+
+plt.fill_between(epi_buffer,fr_buffer+std,fr_buffer-std, color = 'blue', alpha=0.3)
 plt.grid(True, which = 'both')
 
-plt.xlabel("Episode", fontsize=14)
-plt.ylabel("Sum of rewards", fontsize=14)
+plt.xlabel("Episodio", fontsize=14)
+plt.ylabel("Suma de recompensas", fontsize=14)
 plt.show()
