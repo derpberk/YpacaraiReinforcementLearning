@@ -20,6 +20,7 @@ from tensorflow.keras.backend import clear_session
 import tensorflow as tf
 from tensorflow import keras
 import matplotlib.pyplot as plt
+from scipy.signal import lfilter
 
 
 # Importamos nuestro escenario custom #
@@ -34,7 +35,7 @@ env = YpacaraiMap.Environment()
 # Lo reseteamos #
 env.reset()
 
-# Wrapper para seleccionar y componer el estado como las dos matrices
+# Wrapper para seleccionar qué es el estado #
 def do_step(env,action):
     
     obs, reward, done, info = env.step(action)
@@ -71,16 +72,20 @@ class Agente:
         self.loss_fn = keras.losses.Huber()
         # Inicialización del replay memory #
         self.replay_memory = deque(maxlen = 10000)
-        
-        # Hiperparametros #
+        # Parámetros del soft-updating
+        self.tau = 0.125
+        self.soft_update = 0 # ACTIVADO. Si está desactivado tenemos un DQN normal. #
+        # Cada cuantos episodios se actualiza la red del target #
+        self.target_episode_update_freq = 1
+
+        # Hiperparametros del Reinforcement Learning #
         # Con discount rate = 0 -> miope. Con discount rate -> 1 -> largoplacista #
         self.discount_rate = 0.95 # Ponderación de la recompensa futura frente a la inmediata #
         self.epsilon = 0.995
 
         # Creacion de la red #
-        self.model = self._build_compile_model() # Creamos las DNN (las 2) #
-    
-    
+        self.model, self.target = self._build_compile_model() # Creamos las DNN (las 2) #
+        
     # Ahora pasamos a definir los métodos del agente. Primero el método 
     # para acumular una experiencia en el memory replay: 
 
@@ -89,8 +94,7 @@ class Agente:
         self.replay_memory.append((state,action,reward,next_state,done))
 
     # Método donde creamos la DNN para estimar tanto función de target y la funcion Q: 
-    # Función de creación de la DNN #  
-    
+    # Función de creación de la DNN #      
     def _build_compile_model(self):
         
         # Modelo 1 - Only Conv2D #
@@ -107,7 +111,10 @@ class Agente:
         
         model.compile(loss = 'Huber', optimizer = self._optimizer)
         
-        return model
+        target = keras.models.clone_model(model)
+        target.set_weights(model.get_weights())
+        
+        return model, target
         
     # Toma una decisión de qué acción tomar siguiendo la policy e-greedy #
     def take_action(self,state):
@@ -120,7 +127,6 @@ class Agente:
             return np.argmax(q_values[0])
 
     # Para muestrear una experiencia. Sacado del script de dguti #
-
     def sample_experiences(self,batch_size):
         indices = np.random.randint(len(self.replay_memory), size=batch_size)
         batch = [self.replay_memory[index] for index in indices]
@@ -137,14 +143,23 @@ class Agente:
         # Volcamos los valores #
         states, actions, rewards, next_states, dones = experiences
             
+
+        #next_states = next_states.reshape(-1, 1)
+        
+        # Predecimos los valores de Q(s', cada acción) con la FUNCION TARGET
         next_Q_values = self.model.predict(next_states)
         
-       # Tomamos el Q máximo
-        max_next_Q_values = np.max(next_Q_values, axis=1)
+        best_next_actions = np.argmax(next_Q_values, axis = 1)
+        
+        next_mask = tf.one_hot(best_next_actions, self._action_size).numpy()
+    
+        # Calculamos el target #
+        max_next_Q_values = (self.target.predict(next_states) * next_mask).sum(axis=1)
+
 
         # Evaluamos la función de target - si está done no aplicamos la tasa de
         # descuento, puesto que la experiencia está terminada en el tiempo. #
-        target_Q_values = (rewards + self.discount_rate * max_next_Q_values) 
+        target_Q_values = (rewards +  self.discount_rate * max_next_Q_values) 
 
         # Reshape sobre los 
         target_Q_values = target_Q_values.reshape(-1, 1)
@@ -156,7 +171,6 @@ class Agente:
         # [2] -> [0,0,1,0,0,0]
         # [3] -> [0,0,0,1,0,0]
         # ... etc
-
         mask = tf.one_hot(actions, self._action_size)
 
         # Método tape para grabar el forwarding de la red y calcular el gradient
@@ -174,10 +188,17 @@ class Agente:
         # ¿No se podría utilizar la función model.fit() ... ?
         return loss
     
-    def update_target(self):
+    def update_target(self,episode):
         
+        # Si no tenemos soft update...
         if self.soft_update == 0:
-            Barco.target.set_weights(Barco.model.get_weights())
+            # Volvamos la red directamente cada target_episode_update_freq episodios #
+            if(episode%self.target_episode_update_freq == 0):
+                Barco.target.set_weights(Barco.model.get_weights())
+                print("Se ha volcado la red del modelo en la red del target.")
+            else:
+                pass
+        # Si tenemos soft update, pasamos los parámetros filtrados #
         else:
             weights = self.model.get_weights()
             target_weights = self.target.get_weights()
@@ -267,6 +288,8 @@ for episode in tqdm(range(0,num_of_episodes),desc='Rec: {:.2f} '.format(filtered
         # ya podemos entrenar la red #
         if len(Barco.replay_memory) > batch_size:
             loss = Barco.make_a_training_step(batch_size)
+        # if step % 10 == 0:    
+        #     print("Episode: {}, Steps: {}, Rew: {}\n".format(episode, step,rew_episode),end="") # Not shown
     
     # Cargamos en el buffer la recompensa del episodio que se acaba de ejecutar #
     r_buffer.append(rew_episode) 
@@ -283,7 +306,10 @@ for episode in tqdm(range(0,num_of_episodes),desc='Rec: {:.2f} '.format(filtered
         best_weights = Barco.model.get_weights() # Guardamos la DNN que bate el record
         best_score = rew_episode # Actualizamos el record
         print("\nEP: {} --- Nuevo record con Reward de: {} y valor de loss {:06.2f}".format(episode,best_score,loss))
-           
+    
+    # Soft Update del la red del target. Se le pasa el episodio para comprobar si se vuelva o no en el caso de que no haya soft-update #
+    Barco.update_target(episode)
+        
     # Dibujamos #  
     plt.plot(epi_buffer,r_buffer,'b',alpha=0.2)
     plt.plot(epi_buffer,fr_buffer,'r')
@@ -297,10 +323,10 @@ for episode in tqdm(range(0,num_of_episodes),desc='Rec: {:.2f} '.format(filtered
 
 # Cargamos en la red el mejor modelo entrenado #
 # Guardamos la ultima #
-Barco.model.save("SimpleDeep2D_Ypacarai_Model_LAST.h5")
+Barco.model.save("DQN2D_Ypacarai_Model_LAST.h5")
 Barco.model.set_weights(best_weights)
 # Guardamos la red con los pesos #
-Barco.model.save("SimpleDeep2D_Ypacarai_Model_BEST.h5")
+Barco.model.save("DQN2D_Ypacarai_Model_BEST.h5")
     
 print("\n Terminado! \n")
 

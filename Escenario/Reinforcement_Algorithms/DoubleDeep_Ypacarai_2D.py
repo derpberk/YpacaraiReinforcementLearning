@@ -20,6 +20,7 @@ from tensorflow.keras.backend import clear_session
 import tensorflow as tf
 from tensorflow import keras
 import matplotlib.pyplot as plt
+from scypi.signal import lfilter
 
 
 # Importamos nuestro escenario custom #
