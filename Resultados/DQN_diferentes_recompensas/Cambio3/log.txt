@@ -1,0 +1,8 @@
+DQN con estado completo:
+
+Ley de recompensa (basado en Tetromino paper):
+
+- Nueva: +1
+- Ilegal: -5
+- Vieja: -1.5
+

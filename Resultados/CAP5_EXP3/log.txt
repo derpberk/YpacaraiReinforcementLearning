@@ -1,0 +1,16 @@
+Experimento con resultados aceptables
+- PRUEBA1: Double Q Convolucional con BEST y LAST, valor gamma = 0.95
+ y penalizacion -0.5 para casillas frías y para acción ilegal -5. Recompensa 1
+ para casilla nueva descubierta.
+
+-La red tiene como input la imagen RGB del lago con las casillas visitadas, su posicion, el contorno del lago, etc.
+
+-Tamaño del batch = 200
+- Se realizan 200 steps por episodio.
+- Se juegan 700 episodios.
+
+
+
+
+
+
