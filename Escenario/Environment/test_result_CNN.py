@@ -15,6 +15,7 @@ import os
 from IPython.display import clear_output
 from collections import deque
 import progressbar
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Bibliotecas de NNs (Keras y Tensorflow)
 from tensorflow.keras import Model, Sequential
@@ -89,7 +90,7 @@ for steps in range(N):
     # Predicción y accion #
     q_values = model.predict(state[np.newaxis])
     
-    if np.random.rand()<0.95:
+    if np.random.rand()<0.9:
         action = np.argmax(q_values[0])
     else:
         action = np.random.randint(0,8)
@@ -157,6 +158,7 @@ for steps in range(N):
    
     #state = np.dstack((obs['visited_map'],obs['importance_map']))
     state = env.render()
+    position = obs['position']
         
     print("\rLa recompensa de esta acción ha sido: {0:.3f}".format(rew))
 
@@ -168,7 +170,10 @@ img = env.render()
 
 ax1.imshow(img)
 ax2.imshow(VM, cmap = 'gray')
-ax3.imshow(IM,interpolation='bicubic', cmap = 'jet_r')
+im = ax3.imshow(IM,interpolation='bicubic', cmap = 'jet_r')
+divider = make_axes_locatable(ax3)
+cax = divider.append_axes('right', size='5%', pad=0.05)
+fig.colorbar(im, cax=cax, orientation='vertical')
 
 plt.show()
 
