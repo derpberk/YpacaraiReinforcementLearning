@@ -1,0 +1,3 @@
+300 steps cada episodio
+Cada visita resta -50 a R sin saturación inferior
+

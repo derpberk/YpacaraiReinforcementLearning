@@ -1,0 +1,4 @@
+Se ha ampliado el numero de steps a 300
+Se modifica el parámetro de recuperación de importancia a 0.05 (en 20 movimientos se regenera la casilla)
+No se limita el valor mínimo de importancia, luego cada visita quita 50 a la importancia sí o sí, sin saturar a 0.
+EL valor minimo de gamma se baja a 0.05
